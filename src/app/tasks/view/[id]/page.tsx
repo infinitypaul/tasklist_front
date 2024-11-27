@@ -18,6 +18,18 @@ type Permission = {
     name: string;
 };
 
+type SharedWithUser = {
+    id: number;
+    invitee: {
+        id: number;
+        username: string;
+    };
+    permission: {
+        id: number;
+        name: string;
+    };
+};
+
 type ShareFormValues = {
     username: string;
     permission: string;
@@ -29,6 +41,7 @@ const ViewTaskPage = () => {
 
     const [task, setTask] = useState<Task | null>(null);
     const [permissions, setPermissions] = useState<Permission[]>([]);
+    const [sharedWith, setSharedWith] = useState<SharedWithUser[]>([]);
     const [serverError, setServerError] = useState('');
     const [loading, setLoading] = useState(false);
     const [toggleLoading, setToggleLoading] = useState(false);
@@ -72,6 +85,27 @@ const ViewTaskPage = () => {
     }, []);
 
 
+    useEffect(() => {
+        const fetchSharedWith = async () => {
+            try {
+                const token = localStorage.getItem('token');
+                const headers = { Authorization: `Bearer ${token}` };
+
+                const response = await axios.get(
+                    `http://tasklist.test/api/tasks/${taskId}/shared`,
+                    { headers }
+                );
+                setSharedWith(response.data.data);
+            } catch (err: any) {
+                setServerError('Failed to load shared users. Please try again.');
+            }
+        };
+
+        if (taskId) {
+            fetchSharedWith();
+        }
+    }, [taskId]);
+
     const toggleCompletion = async () => {
         if (!task) return;
 
@@ -82,7 +116,6 @@ const ViewTaskPage = () => {
 
             await axios.post(`http://tasklist.test/api/tasks/mark/${task.id}`, {}, { headers });
 
-
             setTask({ ...task, status: !task.status });
         } catch (err: any) {
             setServerError('Failed to update task status. Please try again.');
@@ -90,7 +123,6 @@ const ViewTaskPage = () => {
             setToggleLoading(false);
         }
     };
-
 
     const onSubmit: SubmitHandler<ShareFormValues> = async (data) => {
         setServerError('');
@@ -129,7 +161,6 @@ const ViewTaskPage = () => {
                     Status: {task.status ? 'Completed' : 'Not Completed'}
                 </p>
 
-
                 <button
                     onClick={toggleCompletion}
                     disabled={toggleLoading}
@@ -150,7 +181,6 @@ const ViewTaskPage = () => {
                 )}
 
                 <form onSubmit={handleSubmit(onSubmit)}>
-
                     <div className="mb-4">
                         <label htmlFor="username" className="block text-sm font-medium text-gray-700">
                             Username
@@ -169,7 +199,7 @@ const ViewTaskPage = () => {
                     </div>
 
                     <div className="mb-4">
-                        <label htmlFor="permission_id" className="block text-sm font-medium text-gray-700">
+                        <label htmlFor="permission" className="block text-sm font-medium text-gray-700">
                             Permission
                         </label>
                         <select
@@ -191,7 +221,6 @@ const ViewTaskPage = () => {
                         )}
                     </div>
 
-
                     <button
                         type="submit"
                         disabled={loading}
@@ -202,6 +231,25 @@ const ViewTaskPage = () => {
                         {loading ? 'Sharing...' : 'Share Task'}
                     </button>
                 </form>
+            </div>
+
+
+            <div className="bg-white p-6 rounded-lg shadow-md w-full max-w-lg mx-auto mt-8">
+                <h3 className="text-xl font-bold mb-4">Shared With</h3>
+                {sharedWith.length === 0 ? (
+                    <p>No users have access to this task.</p>
+                ) : (
+                    <ul className="space-y-4">
+                        {sharedWith.map((user) => (
+                            <li key={user.id} className="border-b pb-2">
+                                <p>
+                                    <span className="font-bold">{user.invitee.username}</span> -{' '}
+                                    <span className="text-gray-500">{user.permission.name}</span>
+                                </p>
+                            </li>
+                        ))}
+                    </ul>
+                )}
             </div>
         </Layout>
     );
