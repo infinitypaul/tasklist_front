@@ -40,6 +40,7 @@ const ViewTaskPage = () => {
     const router = useRouter();
 
     const [task, setTask] = useState<Task | null>(null);
+    const [shared, setShared] = useState(false);
     const [permissions, setPermissions] = useState<Permission[]>([]);
     const [sharedWith, setSharedWith] = useState<SharedWithUser[]>([]);
     const [serverError, setServerError] = useState('');
@@ -57,6 +58,7 @@ const ViewTaskPage = () => {
 
                 const response = await axios.get(`http://tasklist.test/api/tasks/${taskId}`, { headers });
                 setTask(response.data.task);
+                setShared(response.data.shared);
             } catch (err: any) {
                 setServerError('Failed to load task details. Please try again.');
             }
@@ -153,7 +155,6 @@ const ViewTaskPage = () => {
 
     return (
         <Layout title="View Task">
-
             <div className="bg-white p-6 rounded-lg shadow-md w-full max-w-lg mx-auto">
                 <h2 className="text-2xl font-bold mb-4">{task.name}</h2>
                 <p className="text-sm text-gray-600 mb-4">{task.description}</p>
@@ -164,6 +165,7 @@ const ViewTaskPage = () => {
                 <button
                     onClick={toggleCompletion}
                     disabled={toggleLoading}
+                    style={{ display: shared ? 'none' : 'block' }}
                     className={`w-full py-2 px-4 rounded-md text-white ${
                         toggleLoading ? 'bg-gray-400' : task.status ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600'
                     }`}
@@ -173,84 +175,89 @@ const ViewTaskPage = () => {
             </div>
 
 
-            <div className="bg-white p-6 rounded-lg shadow-md w-full max-w-lg mx-auto mt-8">
-                <h3 className="text-xl font-bold mb-4">Share This Task</h3>
+            {!shared && (
+                <>
 
-                {serverError && (
-                    <p className="text-red-500 text-center text-sm mb-4">{serverError}</p>
-                )}
+                    <div className="bg-white p-6 rounded-lg shadow-md w-full max-w-lg mx-auto mt-8">
+                        <h3 className="text-xl font-bold mb-4">Share This Task</h3>
 
-                <form onSubmit={handleSubmit(onSubmit)}>
-                    <div className="mb-4">
-                        <label htmlFor="username" className="block text-sm font-medium text-gray-700">
-                            Username
-                        </label>
-                        <input
-                            type="text"
-                            id="username"
-                            {...register('username', { required: 'Username is required' })}
-                            className={`mt-1 block w-full px-3 py-2 border ${
-                                errors.username ? 'border-red-500' : 'border-gray-300'
-                            } rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500`}
-                        />
-                        {errors.username && (
-                            <p className="text-red-500 text-sm mt-1">{errors.username.message}</p>
+                        {serverError && (
+                            <p className="text-red-500 text-center text-sm mb-4">{serverError}</p>
                         )}
+
+                        <form onSubmit={handleSubmit(onSubmit)}>
+                            <div className="mb-4">
+                                <label htmlFor="username" className="block text-sm font-medium text-gray-700">
+                                    Username
+                                </label>
+                                <input
+                                    type="text"
+                                    id="username"
+                                    {...register('username', { required: 'Username is required' })}
+                                    className={`mt-1 block w-full px-3 py-2 border ${
+                                        errors.username ? 'border-red-500' : 'border-gray-300'
+                                    } rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500`}
+                                />
+                                {errors.username && (
+                                    <p className="text-red-500 text-sm mt-1">{errors.username.message}</p>
+                                )}
+                            </div>
+
+                            <div className="mb-4">
+                                <label htmlFor="permission" className="block text-sm font-medium text-gray-700">
+                                    Permission
+                                </label>
+                                <select
+                                    id="permission"
+                                    {...register('permission', { required: 'Permission is required' })}
+                                    className={`mt-1 block w-full px-3 py-2 border ${
+                                        errors.permission ? 'border-red-500' : 'border-gray-300'
+                                    } rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500`}
+                                >
+                                    <option value="">Select a permission</option>
+                                    {permissions.map((permission) => (
+                                        <option key={permission.id} value={permission.id}>
+                                            {permission.name}
+                                        </option>
+                                    ))}
+                                </select>
+                                {errors.permission && (
+                                    <p className="text-red-500 text-sm mt-1">{errors.permission.message}</p>
+                                )}
+                            </div>
+
+                            <button
+                                type="submit"
+                                disabled={loading}
+                                className={`w-full py-2 px-4 rounded-md text-white ${
+                                    loading ? 'bg-gray-400' : 'bg-blue-500 hover:bg-blue-600'
+                                }`}
+                            >
+                                {loading ? 'Sharing...' : 'Share Task'}
+                            </button>
+                        </form>
                     </div>
 
-                    <div className="mb-4">
-                        <label htmlFor="permission" className="block text-sm font-medium text-gray-700">
-                            Permission
-                        </label>
-                        <select
-                            id="permission"
-                            {...register('permission', { required: 'Permission is required' })}
-                            className={`mt-1 block w-full px-3 py-2 border ${
-                                errors.permission ? 'border-red-500' : 'border-gray-300'
-                            } rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500`}
-                        >
-                            <option value="">Select a permission</option>
-                            {permissions.map((permission) => (
-                                <option key={permission.id} value={permission.id}>
-                                    {permission.name}
-                                </option>
-                            ))}
-                        </select>
-                        {errors.permission && (
-                            <p className="text-red-500 text-sm mt-1">{errors.permission.message}</p>
+
+                    <div className="bg-white p-6 rounded-lg shadow-md w-full max-w-lg mx-auto mt-8">
+                        <h3 className="text-xl font-bold mb-4">Shared With</h3>
+                        {sharedWith.length === 0 ? (
+                            <p>No users have access to this task.</p>
+                        ) : (
+                            <ul className="space-y-4">
+                                {sharedWith.map((user) => (
+                                    <li key={user.id} className="border-b pb-2">
+                                        <p>
+                                            <span className="font-bold">{user.invitee.username}</span> -{' '}
+                                            <span className="text-gray-500">{user.permission.name}</span>
+                                        </p>
+                                    </li>
+                                ))}
+                            </ul>
                         )}
                     </div>
-
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className={`w-full py-2 px-4 rounded-md text-white ${
-                            loading ? 'bg-gray-400' : 'bg-blue-500 hover:bg-blue-600'
-                        }`}
-                    >
-                        {loading ? 'Sharing...' : 'Share Task'}
-                    </button>
-                </form>
-            </div>
-
-
-            <div className="bg-white p-6 rounded-lg shadow-md w-full max-w-lg mx-auto mt-8">
-                <h3 className="text-xl font-bold mb-4">Shared With</h3>
-                {sharedWith.length === 0 ? (
-                    <p>No users have access to this task.</p>
-                ) : (
-                    <ul className="space-y-4">
-                        {sharedWith.map((user) => (
-                            <li key={user.id} className="border-b pb-2">
-                                <p>
-                                    <span className="font-bold">{user.invitee.username}</span> -{' '}
-                                    <span className="text-gray-500">{user.permission.name}</span>
-                                </p>
-                            </li>
-                        ))}
-                    </ul>
-                )}
-            </div>
+                </>
+            )}
         </Layout>
     );
 };
