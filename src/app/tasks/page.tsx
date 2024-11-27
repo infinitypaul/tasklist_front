@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import axios from 'axios';
+import Layout from '@/components/Layout';
 
 type Task = {
     id: number;
@@ -16,7 +17,7 @@ type SharedTask = {
     task: Task;
     permission: {
         id: number;
-        name: 'view' | 'edit'; // Permission can only be 'view' or 'edit'
+        name: 'view' | 'edit';
     };
 };
 
@@ -36,18 +37,16 @@ const TasksPage = () => {
                     Authorization: `Bearer ${token}`,
                 };
 
-
                 const ownTasksResponse = await axios.get('http://tasklist.test/api/tasks', {
                     headers,
                 });
 
-                
                 const sharedTasksResponse = await axios.get(
                     'http://tasklist.test/api/tasks/shared',
                     { headers }
                 );
 
-                setTasks(ownTasksResponse.data);
+                setTasks(ownTasksResponse.data.tasks);
                 setSharedTasks(sharedTasksResponse.data.data);
                 setLoading(false);
             } catch (err: any) {
@@ -60,15 +59,24 @@ const TasksPage = () => {
     }, []);
 
     if (loading) {
-        return <div className="text-center mt-10">Loading tasks...</div>;
+        return (
+            <Layout title="Tasks">
+                <div className="text-center mt-10">Loading tasks...</div>
+            </Layout>
+        );
     }
 
     if (error) {
-        return <div className="text-center text-red-500 mt-10">{error}</div>;
+        return (
+            <Layout title="Tasks">
+                <div className="text-center text-red-500 mt-10">{error}</div>
+            </Layout>
+        );
     }
 
     return (
-        <div className="min-h-screen bg-gray-100 p-6">
+        <Layout title="Tasks">
+
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-3xl font-bold">Tasks</h1>
                 <a
@@ -79,14 +87,14 @@ const TasksPage = () => {
                 </a>
             </div>
 
-            {/* Your Tasks Section */}
+
             <section className="mb-10">
-                <h2 className="text-2xl font-semibold mb-4">Your Tasks</h2>
+                {/*<h2 className="text-2xl font-semibold mb-4">Your Tasks</h2>*/}
                 {tasks.length === 0 ? (
                     <p>No tasks found.</p>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {tasks.tasks.map((task) => (
+                        {tasks.map((task) => (
                             <div key={task.id} className="bg-white p-4 shadow rounded">
                                 <h3 className="text-lg font-bold mb-2">{task.name}</h3>
                                 <p className="text-sm text-gray-600">{task.description}</p>
@@ -110,7 +118,7 @@ const TasksPage = () => {
                 )}
             </section>
 
-            {/* Shared Tasks Section */}
+
             <section>
                 <h2 className="text-2xl font-semibold mb-4">Tasks Shared with You</h2>
                 {sharedTasks.length === 0 ? (
@@ -145,7 +153,7 @@ const TasksPage = () => {
                     </div>
                 )}
             </section>
-        </div>
+        </Layout>
     );
 };
 
