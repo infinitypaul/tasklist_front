@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import axios from 'axios';
 import Layout from '@/components/Layout';
+import { getTasks, getSharedTasks } from '@/services/task';
+import { profile } from '@/services/auth';
 
 type Task = {
     id: number;
@@ -24,38 +25,35 @@ type SharedTask = {
 const TasksPage = () => {
     const [tasks, setTasks] = useState<Task[]>([]);
     const [sharedTasks, setSharedTasks] = useState<SharedTask[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
+    const [username, setUsername] = useState<string>('');
+    const [loading, setLoading] = useState<boolean>(true);
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        const fetchTasks = async () => {
+        const fetchData = async () => {
             try {
                 setLoading(true);
 
-                const token = localStorage.getItem('token');
-                const headers = {
-                    Authorization: `Bearer ${token}`,
-                };
 
-                const ownTasksResponse = await axios.get('http://tasklist.test/api/tasks', {
-                    headers,
-                });
+                const profileResponse = await profile();
+                setUsername(profileResponse.data.data.username);
 
-                const sharedTasksResponse = await axios.get(
-                    'http://tasklist.test/api/tasks/shared',
-                    { headers }
-                );
+
+                const [ownTasksResponse, sharedTasksResponse] = await Promise.all([
+                    getTasks(),
+                    getSharedTasks(),
+                ]);
 
                 setTasks(ownTasksResponse.data.tasks);
                 setSharedTasks(sharedTasksResponse.data.data);
-                setLoading(false);
             } catch (err: any) {
                 setError('Failed to load tasks. Please try again.');
+            } finally {
                 setLoading(false);
             }
         };
 
-        fetchTasks();
+        fetchData();
     }, []);
 
     if (loading) {
@@ -78,7 +76,7 @@ const TasksPage = () => {
         <Layout title="Tasks">
 
             <div className="flex justify-between items-center mb-6">
-                <h1 className="text-3xl font-bold">Tasks</h1>
+                <h1 className="text-3xl font-bold">Welcome, {username}</h1>
                 <a
                     href="/tasks/create"
                     className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600"
@@ -89,7 +87,7 @@ const TasksPage = () => {
 
 
             <section className="mb-10">
-                {/*<h2 className="text-2xl font-semibold mb-4">Your Tasks</h2>*/}
+                <h2 className="text-2xl font-semibold mb-4">Your Tasks</h2>
                 {tasks.length === 0 ? (
                     <p>No tasks found.</p>
                 ) : (
@@ -97,7 +95,7 @@ const TasksPage = () => {
                         {tasks.map((task) => (
                             <div key={task.id} className="bg-white p-4 shadow rounded">
                                 <h3 className="text-lg font-bold mb-2">{task.name}</h3>
-                                <p className="text-sm text-gray-600">{task.description}</p>
+                                <p className="text-sm text-gray-600">{task.description || 'No description provided'}</p>
                                 <div className="mt-4 flex justify-between items-center">
                                     <a
                                         href={`/tasks/view/${task.id}`}
@@ -128,9 +126,10 @@ const TasksPage = () => {
                         {sharedTasks.map((sharedTask) => (
                             <div key={sharedTask.id} className="bg-white p-4 shadow rounded">
                                 <h3 className="text-lg font-bold mb-2">{sharedTask.task.name}</h3>
-                                <p className="text-sm text-gray-600">{sharedTask.task.description}</p>
+                                <p className="text-sm text-gray-600">{sharedTask.task.description || 'No description provided'}</p>
                                 <p className="text-sm text-gray-500 mt-2">
-                                    Permission: <span className="font-medium">{sharedTask.permission.name}</span>
+                                    Permission:{' '}
+                                    <span className="font-medium">{sharedTask.permission.name}</span>
                                 </p>
                                 <div className="mt-4 flex justify-between items-center">
                                     <a

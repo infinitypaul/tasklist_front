@@ -5,7 +5,9 @@ import { useForm, SubmitHandler } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as Yup from 'yup';
 import { useRouter } from 'next/navigation';
-import axios from 'axios';
+import { register as registerUser } from '@/services/auth';
+import FormInput from '@/components/FormInput';
+import {useAuth} from "@/app/hooks/useAuth";
 
 type FormValues = {
     name: string;
@@ -17,6 +19,7 @@ type FormValues = {
 
 const RegisterPage = () => {
     const router = useRouter();
+    useAuth(true);
     const [serverError, setServerError] = useState('');
 
     const validationSchema = Yup.object().shape({
@@ -36,7 +39,6 @@ const RegisterPage = () => {
             .required('Password confirmation is required'),
     });
 
-
     const {
         register,
         handleSubmit,
@@ -45,12 +47,10 @@ const RegisterPage = () => {
         resolver: yupResolver(validationSchema),
     });
 
-
     const onSubmit: SubmitHandler<FormValues> = async (data) => {
         setServerError('');
         try {
-            const apiUrl = 'http://tasklist.test/api/register';
-            await axios.post(apiUrl, data);
+            await registerUser(data);
             router.push('/login');
         } catch (err: any) {
             setServerError(err.response?.data?.message || 'Registration failed');
@@ -64,96 +64,40 @@ const RegisterPage = () => {
                 className="w-full max-w-md bg-white p-6 rounded-lg shadow-md"
             >
                 <h1 className="text-2xl font-bold text-center mb-6">Register</h1>
-
-
-                {serverError && (
-                    <p className="text-red-500 text-center text-sm mb-4">{serverError}</p>
-                )}
-
-
-                <div className="mb-4">
-                    <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                        Full Name
-                    </label>
-                    <input
-                        type="text"
-                        id="name"
-                        {...register('name')}
-                        className={`mt-1 block w-full px-3 py-2 border ${
-                            errors.name ? 'border-red-500' : 'border-gray-300'
-                        } rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500`}
-                    />
-                    <p className="text-red-500 text-sm mt-1">{errors.name?.message}</p>
-                </div>
-
-
-                <div className="mb-4">
-                    <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                        Email
-                    </label>
-                    <input
-                        type="email"
-                        id="email"
-                        {...register('email')}
-                        className={`mt-1 block w-full px-3 py-2 border ${
-                            errors.email ? 'border-red-500' : 'border-gray-300'
-                        } rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500`}
-                    />
-                    <p className="text-red-500 text-sm mt-1">{errors.email?.message}</p>
-                </div>
-
-
-                <div className="mb-4">
-                    <label htmlFor="username" className="block text-sm font-medium text-gray-700">
-                        Username
-                    </label>
-                    <input
-                        type="text"
-                        id="username"
-                        {...register('username')}
-                        className={`mt-1 block w-full px-3 py-2 border ${
-                            errors.username ? 'border-red-500' : 'border-gray-300'
-                        } rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500`}
-                    />
-                    <p className="text-red-500 text-sm mt-1">{errors.username?.message}</p>
-                </div>
-
-
-                <div className="mb-6">
-                    <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                        Password
-                    </label>
-                    <input
-                        type="password"
-                        id="password"
-                        {...register('password')}
-                        className={`mt-1 block w-full px-3 py-2 border ${
-                            errors.password ? 'border-red-500' : 'border-gray-300'
-                        } rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500`}
-                    />
-                    <p className="text-red-500 text-sm mt-1">{errors.password?.message}</p>
-                </div>
-
-                <div className="mb-6">
-                    <label
-                        htmlFor="password_confirmation"
-                        className="block text-sm font-medium text-gray-700"
-                    >
-                        Confirm Password
-                    </label>
-                    <input
-                        type="password"
-                        id="password_confirmation"
-                        {...register('password_confirmation')}
-                        className={`mt-1 block w-full px-3 py-2 border ${
-                            errors.password_confirmation ? 'border-red-500' : 'border-gray-300'
-                        } rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500`}
-                    />
-                    <p className="text-red-500 text-sm mt-1">
-                        {errors.password_confirmation?.message}
-                    </p>
-                </div>
-
+                {serverError && <p className="text-red-500 text-center text-sm mb-4">{serverError}</p>}
+                <FormInput
+                    label="Full Name"
+                    id="name"
+                    register={register('name')}
+                    error={errors.name?.message}
+                />
+                <FormInput
+                    label="Email"
+                    id="email"
+                    type="email"
+                    register={register('email')}
+                    error={errors.email?.message}
+                />
+                <FormInput
+                    label="Username"
+                    id="username"
+                    register={register('username')}
+                    error={errors.username?.message}
+                />
+                <FormInput
+                    label="Password"
+                    id="password"
+                    type="password"
+                    register={register('password')}
+                    error={errors.password?.message}
+                />
+                <FormInput
+                    label="Confirm Password"
+                    id="password_confirmation"
+                    type="password"
+                    register={register('password_confirmation')}
+                    error={errors.password_confirmation?.message}
+                />
                 <button
                     type="submit"
                     disabled={isSubmitting}
@@ -161,10 +105,8 @@ const RegisterPage = () => {
                         isSubmitting ? 'bg-gray-400' : 'bg-blue-500 hover:bg-blue-600'
                     }`}
                 >
-                    {isSubmitting ? 'Submitting...' : 'Register'}
+                    {isSubmitting ? 'Registering...' : 'Register'}
                 </button>
-
-
                 <p className="text-center text-sm mt-4">
                     Already have an account?{' '}
                     <a href="/login" className="text-blue-500 hover:underline">

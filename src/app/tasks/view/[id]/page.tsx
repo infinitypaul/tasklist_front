@@ -2,14 +2,22 @@
 
 import { useEffect, useState } from 'react';
 import { useForm, SubmitHandler } from 'react-hook-form';
-import { useParams, useRouter } from 'next/navigation';
-import axios from 'axios';
+import { useParams } from 'next/navigation';
 import Layout from '@/components/Layout';
+import FormInput from '@/components/FormInput';
+import FormSelect from '@/components/FormSelect';
+import {
+    getTaskDetails,
+    getPermissions,
+    getSharedWithUsers,
+    toggleTaskCompletion,
+    shareTask
+} from '@/services/task';
 
 type Task = {
     id: number;
     name: string;
-    description: string;
+    description: string | null;
     status: boolean;
 };
 
@@ -37,7 +45,6 @@ type ShareFormValues = {
 
 const ViewTaskPage = () => {
     const { id: taskId } = useParams();
-    const router = useRouter();
 
     const [task, setTask] = useState<Task | null>(null);
     const [shared, setShared] = useState(false);
@@ -53,10 +60,7 @@ const ViewTaskPage = () => {
     useEffect(() => {
         const fetchTask = async () => {
             try {
-                const token = localStorage.getItem('token');
-                const headers = { Authorization: `Bearer ${token}` };
-
-                const response = await axios.get(`http://tasklist.test/api/tasks/${taskId}`, { headers });
+                const response = await getTaskDetails(taskId);
                 setTask(response.data.task);
                 setShared(response.data.shared);
             } catch (err: any) {
@@ -64,19 +68,14 @@ const ViewTaskPage = () => {
             }
         };
 
-        if (taskId) {
-            fetchTask();
-        }
+        if (taskId) fetchTask();
     }, [taskId]);
 
 
     useEffect(() => {
         const fetchPermissions = async () => {
             try {
-                const token = localStorage.getItem('token');
-                const headers = { Authorization: `Bearer ${token}` };
-
-                const response = await axios.get('http://tasklist.test/api/permissions', { headers });
+                const response = await getPermissions();
                 setPermissions(response.data.data);
             } catch (err: any) {
                 setServerError('Failed to load permissions. Please try again.');
@@ -90,34 +89,23 @@ const ViewTaskPage = () => {
     useEffect(() => {
         const fetchSharedWith = async () => {
             try {
-                const token = localStorage.getItem('token');
-                const headers = { Authorization: `Bearer ${token}` };
-
-                const response = await axios.get(
-                    `http://tasklist.test/api/tasks/${taskId}/shared`,
-                    { headers }
-                );
+                const response = await getSharedWithUsers(taskId);
                 setSharedWith(response.data.data);
             } catch (err: any) {
                 setServerError('Failed to load shared users. Please try again.');
             }
         };
 
-        if (taskId) {
-            fetchSharedWith();
-        }
+        if (taskId) fetchSharedWith();
     }, [taskId]);
+
 
     const toggleCompletion = async () => {
         if (!task) return;
 
         setToggleLoading(true);
         try {
-            const token = localStorage.getItem('token');
-            const headers = { Authorization: `Bearer ${token}` };
-
-            await axios.post(`http://tasklist.test/api/tasks/mark/${task.id}`, {}, { headers });
-
+            await toggleTaskCompletion(task.id);
             setTask({ ...task, status: !task.status });
         } catch (err: any) {
             setServerError('Failed to update task status. Please try again.');
@@ -126,18 +114,17 @@ const ViewTaskPage = () => {
         }
     };
 
+
     const onSubmit: SubmitHandler<ShareFormValues> = async (data) => {
         setServerError('');
         setLoading(true);
 
         try {
-            const token = localStorage.getItem('token');
-            const headers = { Authorization: `Bearer ${token}` };
-
-            await axios.post(`http://tasklist.test/api/tasks/share/${taskId}`, data, { headers });
-
+            await shareTask(taskId, data);
             alert('Task shared successfully');
             reset();
+            const response = await getSharedWithUsers(taskId);
+            setSharedWith(response.data.data);
         } catch (err: any) {
             setServerError(err.response?.data?.message || 'Failed to share the task');
         } finally {
@@ -155,23 +142,29 @@ const ViewTaskPage = () => {
 
     return (
         <Layout title="View Task">
+
             <div className="bg-white p-6 rounded-lg shadow-md w-full max-w-lg mx-auto">
                 <h2 className="text-2xl font-bold mb-4">{task.name}</h2>
-                <p className="text-sm text-gray-600 mb-4">{task.description}</p>
+                <p className="text-sm text-gray-600 mb-4">{task.description || 'No description provided.'}</p>
                 <p className="text-sm text-gray-500 mb-6">
                     Status: {task.status ? 'Completed' : 'Not Completed'}
                 </p>
 
-                <button
-                    onClick={toggleCompletion}
-                    disabled={toggleLoading}
-                    style={{ display: shared ? 'none' : 'block' }}
-                    className={`w-full py-2 px-4 rounded-md text-white ${
-                        toggleLoading ? 'bg-gray-400' : task.status ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600'
-                    }`}
-                >
-                    {toggleLoading ? 'Updating...' : task.status ? 'Mark as Not Completed' : 'Mark as Completed'}
-                </button>
+                {!shared && (
+                    <button
+                        onClick={toggleCompletion}
+                        disabled={toggleLoading}
+                        className={`w-full py-2 px-4 rounded-md text-white ${
+                            toggleLoading
+                                ? 'bg-gray-400'
+                                : task.status
+                                    ? 'bg-red-500 hover:bg-red-600'
+                                    : 'bg-green-500 hover:bg-green-600'
+                        }`}
+                    >
+                        {toggleLoading ? 'Updating...' : task.status ? 'Mark as Not Completed' : 'Mark as Completed'}
+                    </button>
+                )}
             </div>
 
 
@@ -180,51 +173,27 @@ const ViewTaskPage = () => {
 
                     <div className="bg-white p-6 rounded-lg shadow-md w-full max-w-lg mx-auto mt-8">
                         <h3 className="text-xl font-bold mb-4">Share This Task</h3>
-
-                        {serverError && (
-                            <p className="text-red-500 text-center text-sm mb-4">{serverError}</p>
-                        )}
+                        {serverError && <p className="text-red-500 text-center text-sm mb-4">{serverError}</p>}
 
                         <form onSubmit={handleSubmit(onSubmit)}>
-                            <div className="mb-4">
-                                <label htmlFor="username" className="block text-sm font-medium text-gray-700">
-                                    Username
-                                </label>
-                                <input
-                                    type="text"
-                                    id="username"
-                                    {...register('username', { required: 'Username is required' })}
-                                    className={`mt-1 block w-full px-3 py-2 border ${
-                                        errors.username ? 'border-red-500' : 'border-gray-300'
-                                    } rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500`}
-                                />
-                                {errors.username && (
-                                    <p className="text-red-500 text-sm mt-1">{errors.username.message}</p>
-                                )}
-                            </div>
+                            <FormInput
+                                label="Username"
+                                id="username"
+                                type="text"
+                                register={register('username', { required: 'Username is required' })}
+                                error={errors.username?.message}
+                            />
 
-                            <div className="mb-4">
-                                <label htmlFor="permission" className="block text-sm font-medium text-gray-700">
-                                    Permission
-                                </label>
-                                <select
-                                    id="permission"
-                                    {...register('permission', { required: 'Permission is required' })}
-                                    className={`mt-1 block w-full px-3 py-2 border ${
-                                        errors.permission ? 'border-red-500' : 'border-gray-300'
-                                    } rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500`}
-                                >
-                                    <option value="">Select a permission</option>
-                                    {permissions.map((permission) => (
-                                        <option key={permission.id} value={permission.id}>
-                                            {permission.name}
-                                        </option>
-                                    ))}
-                                </select>
-                                {errors.permission && (
-                                    <p className="text-red-500 text-sm mt-1">{errors.permission.message}</p>
-                                )}
-                            </div>
+                            <FormSelect
+                                label="Permission"
+                                id="permission"
+                                register={register('permission', { required: 'Permission is required' })}
+                                options={permissions.map((permission) => ({
+                                    value: permission.id,
+                                    label: permission.name,
+                                }))}
+                                error={errors.permission?.message}
+                            />
 
                             <button
                                 type="submit"

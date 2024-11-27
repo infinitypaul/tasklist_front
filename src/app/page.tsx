@@ -1,101 +1,116 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
+import { useState } from 'react';
+import { useForm, SubmitHandler } from 'react-hook-form';
+import { yupResolver } from '@hookform/resolvers/yup';
+import * as Yup from 'yup';
+import { useRouter } from 'next/navigation';
+import axios from 'axios';
+
+type FormValues = {
+  email: string;
+  password: string;
+};
+
+const LoginPage = () => {
+  const router = useRouter();
+  const [serverError, setServerError] = useState('');
+
+  const validationSchema = Yup.object().shape({
+    email: Yup.string()
+        .required('Email is required')
+        .email('Invalid email address'),
+    password: Yup.string().required('Password is required'),
+  });
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<FormValues>({
+    resolver: yupResolver(validationSchema),
+  });
+
+  const onSubmit: SubmitHandler<FormValues> = async (data) => {
+    setServerError('');
+    try {
+      const apiUrl = 'http://tasklist.test/api/login';
+      const response = await axios.post(apiUrl, data);
+      const { token } = response.data.data;
+
+      localStorage.setItem('token', token);
+      router.push('/tasks');
+    } catch (err: any) {
+      setServerError(err.response?.data?.message || 'Login failed');
+    }
+  };
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <form
+            onSubmit={handleSubmit(onSubmit)}
+            className="w-full max-w-md bg-white p-6 rounded-lg shadow-md"
+        >
+          <h1 className="text-2xl font-bold text-center mb-6">Login</h1>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+
+          {serverError && (
+              <p className="text-red-500 text-center text-sm mb-4">{serverError}</p>
+          )}
+
+
+          <div className="mb-4">
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+              Email
+            </label>
+            <input
+                type="email"
+                id="email"
+                {...register('email')}
+                className={`mt-1 block w-full px-3 py-2 border ${
+                    errors.email ? 'border-red-500' : 'border-gray-300'
+                } rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500`}
             />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+            <p className="text-red-500 text-sm mt-1">{errors.email?.message}</p>
+          </div>
+
+
+          <div className="mb-6">
+            <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+              Password
+            </label>
+            <input
+                type="password"
+                id="password"
+                {...register('password')}
+                className={`mt-1 block w-full px-3 py-2 border ${
+                    errors.password ? 'border-red-500' : 'border-gray-300'
+                } rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500`}
+            />
+            <p className="text-red-500 text-sm mt-1">{errors.password?.message}</p>
+          </div>
+
+
+          <button
+              type="submit"
+              disabled={isSubmitting}
+              className={`w-full py-2 px-4 rounded-md text-white ${
+                  isSubmitting ? 'bg-gray-400' : 'bg-blue-500 hover:bg-blue-600'
+              }`}
           >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+            {isSubmitting ? 'Logging in...' : 'Login'}
+          </button>
+
+
+          <p className="text-center text-sm mt-4">
+            Don&apos;t have an account?{' '}
+            <a href="/register" className="text-blue-500 hover:underline">
+              Register
+            </a>
+          </p>
+        </form>
+      </div>
   );
-}
+};
+
+export default LoginPage;

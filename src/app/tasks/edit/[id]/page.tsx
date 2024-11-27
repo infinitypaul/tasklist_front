@@ -5,8 +5,9 @@ import { useForm, SubmitHandler } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as Yup from 'yup';
 import { useRouter, useParams } from 'next/navigation';
-import axios from 'axios';
 import Layout from '@/components/Layout';
+import { getTaskDetails, updateTask } from '@/services/task';
+import FormInput from '@/components/FormInput';
 
 type FormValues = {
     name: string;
@@ -35,21 +36,12 @@ const EditTaskPage = () => {
         resolver: yupResolver(validationSchema),
     });
 
+
     useEffect(() => {
         const fetchTask = async () => {
-            console.log('fetchTask called with taskId:', taskId);
-
             try {
-                const token = localStorage.getItem('token');
-                const headers = {
-                    Authorization: `Bearer ${token}`,
-                };
-
-                const response = await axios.get(`http://tasklist.test/api/tasks/${taskId}`, { headers });
+                const response = await getTaskDetails(taskId);
                 const task = response.data.task;
-
-                console.log('Task fetched:', task);
-
 
                 setValue('name', task.name);
                 setValue('description', task.description);
@@ -60,22 +52,16 @@ const EditTaskPage = () => {
             }
         };
 
-        if (taskId) {
-            fetchTask();
-        }
+        if (taskId) fetchTask();
     }, [taskId, setValue]);
 
+    // Form Submission
     const onSubmit: SubmitHandler<FormValues> = async (data) => {
         setServerError('');
         setLoading(true);
 
         try {
-            const token = localStorage.getItem('token');
-            const headers = {
-                Authorization: `Bearer ${token}`,
-            };
-
-            await axios.put(`http://tasklist.test/api/tasks/${taskId}`, data, { headers });
+            await updateTask(taskId, data);
             router.push('/tasks');
         } catch (err: any) {
             setServerError(err.response?.data?.message || 'Failed to update task');
@@ -104,39 +90,22 @@ const EditTaskPage = () => {
                     <p className="text-red-500 text-center text-sm mb-4">{serverError}</p>
                 )}
 
-                <div className="mb-4">
-                    <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                        Task Name
-                    </label>
-                    <input
-                        type="text"
-                        id="name"
-                        {...register('name')}
-                        className={`mt-1 block w-full px-3 py-2 border ${
-                            errors.name ? 'border-red-500' : 'border-gray-300'
-                        } rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500`}
-                    />
-                    {errors.name && (
-                        <p className="text-red-500 text-sm mt-1">{errors.name.message}</p>
-                    )}
-                </div>
+                <FormInput
+                    label="Task Name"
+                    id="name"
+                    type="text"
+                    register={register('name')}
+                    error={errors.name?.message}
+                />
 
-                <div className="mb-6">
-                    <label htmlFor="description" className="block text-sm font-medium text-gray-700">
-                        Task Description
-                    </label>
-                    <textarea
-                        id="description"
-                        {...register('description')}
-                        rows={4}
-                        className={`mt-1 block w-full px-3 py-2 border ${
-                            errors.description ? 'border-red-500' : 'border-gray-300'
-                        } rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500`}
-                    ></textarea>
-                    {errors.description && (
-                        <p className="text-red-500 text-sm mt-1">{errors.description.message}</p>
-                    )}
-                </div>
+                <FormInput
+                    label="Task Description"
+                    id="description"
+                    type="textarea"
+                    rows={4}
+                    register={register('description')}
+                    error={errors.description?.message}
+                />
 
                 <button
                     type="submit"
